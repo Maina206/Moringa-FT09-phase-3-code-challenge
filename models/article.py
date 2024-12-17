@@ -1,67 +1,53 @@
+from database.connection import get_db_connection
+
 class Article:
-    _articles_table = []
+    def __init__(self, id, title, content, author_id, magazine_id):    
+        self.id=id
+        self._title = title
+        self._content = content
+        self._author_id = author_id
+        self._magazine_id = magazine_id
 
-    def __init__(self, id, title, content, author_id, magazine_id):
-        if not isinstance(id, int):
-            raise ValueError("id must be of type int.")
-        self.id = id
 
-        if not isinstance(title, str) or not (5 <= len(title) <= 50):
-            raise ValueError("title must be a string with 5 to 50 characters.")
-        self.title = title
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute('INSERT INTO articles ( title, content, author_id, magazine_id) VALUES (?, ?, ?, ?)', ( self._title, self._content, self._author_id, self._magazine_id))
+        self._id = cursor.lastrowid
+        connection.commit()
+        connection.close()
 
-        if not isinstance(content, str) or len(content) == 0:
-            raise ValueError("content must be a non-empty string.")
-        self.content = content
+    @property
+    def title(self):
+        return self._title
+    @title.setter
+    def title(self, value):
+        if hasattr(self, '_title'):
+            raise AttributeError("Title cannot be changed after the article is instantiated") 
+        # Ensure title is a string and meets length requirements
+        if not isinstance(value, str):
+            raise TypeError("title must be a string")
+        if len(value) < 5 or len(value) > 50:
+            raise ValueError("title must be between 5 and 50 characters")
 
-        if not isinstance(author_id, int):
-            raise ValueError("author_id must be of type int.")
-        self.author_id = author_id
-
-        if not isinstance(magazine_id, int):
-            raise ValueError("magazine_id must be of type int.")
-        self.magazine_id = magazine_id
-
-        self.__class__._articles_table.append({
-            "id": self.id,
-            "title": self.title,
-            "content": self.content,
-            "author_id": self.author_id,
-            "magazine_id": self.magazine_id
-        })
-
-    def __repr__(self):
-        return f'<Article {self.title}>'
-
-    @classmethod
-    def get_all_articles(cls):
-        return cls._articles_table
-
-    @classmethod
-    def find_by_id(cls, article_id):
-        for article in cls._articles_table:
-            if article["id"] == article_id:
-                return article
-        return None
-
-    @classmethod
-    def find_by_author_id(cls, author_id):
-        return [article for article in cls._articles_table if article["author_id"] == author_id]
-
-    @classmethod
-    def find_by_magazine_id(cls, magazine_id):
-        return [article for article in cls._articles_table if article["magazine_id"] == magazine_id]
+        # Set the title
+        self._title = value
 
     @property
     def author(self):
-        for author in author._authors_table:
-            if author["id"] == self.author_id:
-                return author
-        return None
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT name FROM authors WHERE id = ?;", (self._author_id,))
+        author = cursor.fetchone()
+        connection.close()
+        return author[0]
 
     @property
     def magazine(self):
-        for magazine in magazine._magazines_table:
-            if magazine["id"] == self.magazine_id:
-                return magazine
-        return None
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT name FROM magazines WHERE id = ?;", (self._magazine_id,))
+        magazine = cursor.fetchone()
+        connection.close()
+        return magazine[0]
+    def __repr__(self):
+        return f'<Article {self.title}>'

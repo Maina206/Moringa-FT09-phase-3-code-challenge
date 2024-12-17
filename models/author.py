@@ -1,58 +1,63 @@
+from database.connection import get_db_connection
+
 class Author:
-    _authors_table = []
-    _id_counter = 1
-
-    def __init__(self, id: int, name: str):
-        if not isinstance(id, int):
-            raise ValueError("id must be of type int.")
-        
-        self._id = id
-
-        if not isinstance(name, str) or len(name) == 0:
-            raise ValueError("name must be a non-empty string.")
-        
-        if hasattr(self, "_name"):
-            raise AttributeError("Cannot modify name after initialization")
-        
+    def __init__(self,id, name):
+        self.id = id
         self._name = name
 
-        self.__class__._authors_table.append({"id": self._id, "name": self._name})
-        self.__class__._id_counter += 1
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("INSERT INTO authors (name) VALUES (?);", (self._name,))
+        self._id = cursor.lastrowid
+        connection.commit()
+        connection.close()
 
     @property
-    def id(self) -> int:
+    def id(self):
         return self._id
-    
+
     @id.setter
     def id(self, value):
-        raise AttributeError("Cannot modify id.")
-    
+        if not isinstance(value, int):
+            raise ValueError("ID must be an integer.")
+        self._id = value
+
     @property
-    def name(self) -> str:
+    def name(self):
         return self._name
-    
+
     @name.setter
     def name(self, value):
-        raise AttributeError("Cannot modify name.")
-    
-    @classmethod
-    def get_all_authors(cls):
-        return cls._authors_table
-    
-    @property
-    def articles(self):
-        associated_articles = [article for article in associated_articles._articles_table if article["author_id"] == self._id]
-        return associated_articles
+        if hasattr(self,'_name'):
+            raise AttributeError("Name cannot be changed after author's instantied")
+        if not isinstance(value, str):
+            raise TypeError("name must be a string")
+        self._name = value
+        if len(value) < 0:
+            raise ValueError("name must be longer than 0 characters")
+        self._name = value
 
-    @property
+    def articles(self):
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute('''
+        SELECT title FROM articles WHERE author_id = ?;
+        ''', (self._id,))
+        articles = cursor.fetchall()
+        connection.close()
+        return [article[0] for article in articles]
+
     def magazines(self):
-        associated_articles = self.articles
-        associated_magazines = []
-        for article in associated_articles:
-            for magazine in magazine._magazines_table:
-                if magazine["id"] == article["magazine_id"]:
-                    associated_magazines.append(magazine)
-        return associated_magazines
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute('''
+        SELECT DISTINCT m.name FROM magazines m
+        INNER JOIN articles a ON m.id = a.magazine_id
+        WHERE a.author_id = ?;
+        ''', (self._id,))
+        magazines = cursor.fetchall()
+        connection.close()
+        return [magazine[0] for magazine in magazines]
 
     def __repr__(self):
-        return f'<Author {self._name}>'
+        return f"Author(id={self._id}, name={self._name})"
